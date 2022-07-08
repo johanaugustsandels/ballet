@@ -25,6 +25,7 @@
         <th scope="col">Date</th>
         <th scope="col">Amount</th>
         <th scope="col">From</th>
+        <th scope="col">Tx</th>
       </tr>
     </thead>
     <tbody id="transactions">
@@ -37,14 +38,36 @@
 
 <script>
   async function sha256(data) {
-    // TODO maybe from bytearray not string?
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder("utf-8").encode(data));
-    return Array.prototype.map.call(new Uint8Array(buf), x=>(('00'+x.toString(16)).slice(-2))).join('');
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return Array.prototype.map.call(new Uint8Array(buf), x => (('00' + x.toString(16)).slice(-2))).join('').toUpperCase();;
+  }
+  async function sha256bytes(data) {
+    const buf = await crypto.subtle.digest("SHA-256", data);
+    return buf
   }
 
-  const encoder = (data) => {
-    let utf8Encode = new TextEncoder();
-    return utf8Encode.encode(data)
+  const HexToArrayBuffer = (hex) => {
+    return new Uint8Array(hex.match(/../g).map(h=>parseInt(h,16))).buffer
+  }
+
+  const IntToArrayBuffer = (int) => {
+    return new Int32Array([int]).buffer
+  }
+
+  function arrayBufferConcat(/* arraybuffers */) {
+    var arrays = [].slice.call(arguments)
+
+    var arrayBuffer = arrays.reduce(function(cbuf, buf, i) {
+      if (i === 0) return cbuf
+
+      var tmp = new Uint8Array(cbuf.byteLength + buf.byteLength)
+      tmp.set(new Uint8Array(cbuf), 0)
+      tmp.set(new Uint8Array(buf), cbuf.byteLength)
+
+      return tmp.buffer
+    }, arrays[0])
+
+    return arrayBuffer
   }
 
   const params = new Proxy(new URLSearchParams(window.location.search), {
@@ -63,6 +86,41 @@
 
     return fetch(u)
       .then(response => response.json())
+  }
+
+  const CalculateHash = (transaction, cb) => {
+    CalculateContentHash(transaction).then(data => {
+      var parts = []
+      parts.push(data)
+      if (transaction.from != "") {
+        parts.push(HexToArrayBuffer(transaction.signature))
+      }
+      let data2 = arrayBufferConcat(...parts)
+      sha256(data2).then(data2 => {
+        console.log("tokapaska", data2)
+        console.log(transaction)
+
+        cb(data2)
+      })
+    })
+  }
+
+  const CalculateContentHash = (transaction) => {
+    parts = []
+    parts.push(HexToArrayBuffer(transaction.to))
+    if (transaction.from != "") {
+      parts.push(HexToArrayBuffer(transaction.from))
+    }
+    parts.push(IntToArrayBuffer(transaction.fee))
+    parts.push(IntToArrayBuffer(transaction.amount))
+
+    // trolol
+    parts.push(IntToArrayBuffer(parseInt(transaction.timestamp)));
+    parts.push(IntToArrayBuffer(0));
+
+    let data = arrayBufferConcat(...parts)
+
+    return sha256bytes(data)
   }
 
   const addTransaction = (transaction) => {
@@ -88,11 +146,21 @@
     let tdFromEl = document.createElement("td")
     tdFromEl.textContent = from
 
+    let tdTxEl = document.createElement("td")
+
     trEl.appendChild(tdDateEl)
     trEl.appendChild(tdAmountEl)
     trEl.appendChild(tdFromEl)
+    trEl.appendChild(tdTxEl)
 
     transactions.appendChild(trEl)
+
+    CalculateHash(transaction, (data) => {
+      let txLink = document.createElement("a")
+      txLink.href = "https://explorer.0xf10.com/tx/" + data.toLowerCase()
+      txLink.textContent = "https://explorer.0xf10.com/tx/" + data.toLowerCase()
+      tdTxEl.appendChild(txLink)
+    })
   }
 
   const read = (wallet, blockId) => {
