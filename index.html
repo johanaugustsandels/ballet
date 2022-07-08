@@ -1,0 +1,139 @@
+<style>
+  th, td {
+    padding: 5px;
+  }
+
+  #mystery {
+    display: none;
+  }
+</style>
+
+<h1>Ballet - <a href="http://www.bamboocrypto.io">BMB</a> wallet v0.1</h1>
+
+<h2>block count: <span id="blockCount">-1</span></h2>
+
+<h2>wallet: <input id="walletEl" size="64"></input></h2>
+
+<div id="mystery">
+  <h2>balance <span id="balance">-1</span></h2>
+
+  <h2>latest transactions <span id="blockScanner">(scanned: <span id="blockCounterEl">-1</span> blocks)</h2>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th scope="col">Date</th>
+        <th scope="col">Amount</th>
+        <th scope="col">From</th>
+      </tr>
+    </thead>
+    <tbody id="transactions">
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const params = new Proxy(new URLSearchParams(window.location.search), {
+    get: (searchParams, prop) => searchParams.get(prop),
+  });
+
+  const api = (method, path, query) => {
+    const u = new URL("http://173.230.139.86:3000/")
+    u.pathname = path
+
+    for (let [key, value] of Object.entries(query)) {
+        u.searchParams.append(key, value)
+    }
+
+    return fetch(u)
+      .then(response => response.json())
+  }
+
+  const addTransaction = (transaction) => {
+    const trEl = document.createElement("tr")
+
+    const date = new Date(
+      parseInt(transaction.timestamp) * 1000
+    )
+    const amount = transaction.amount / 10000
+
+    let from = "mining"
+    if (transaction.from != "") {
+      from = transaction.from
+    }
+
+    let tdDateEl = document.createElement("td")
+    tdDateEl.textContent = date.toLocaleString()
+
+    let tdAmountEl = document.createElement("td")
+    tdAmountEl.align = "right"
+    tdAmountEl.textContent = amount
+
+    let tdFromEl = document.createElement("td")
+    tdFromEl.textContent = from
+
+    trEl.appendChild(tdDateEl)
+    trEl.appendChild(tdAmountEl)
+    trEl.appendChild(tdFromEl)
+
+    transactions.appendChild(trEl)
+  }
+
+  const read = (wallet, blockId) => {
+    api("GET", "block", {
+      "blockId": blockId
+    }).then(data => {
+      blockCounterEl.textContent = blockCounter++
+      data.transactions.forEach(transaction => {
+        if (transaction.to == wallet) {
+          addTransaction(transaction, data)
+        }
+      })
+
+      if (blockId > 1) {
+        read(wallet, blockId-1)
+      } else {
+        return
+      }
+    })
+  }
+
+  let blockCounter = 0
+
+  api("GET", "block_count", {})
+  .then(data => {
+    blockCount.textContent = data
+  })
+
+  walletEl.addEventListener('change', (event) => {
+    wallet = event.target.value
+
+    var queryParams = new URLSearchParams(window.location.search);
+    queryParams.set("wallet", wallet);
+    history.replaceState(null, null, "?" + queryParams.toString());
+    window.location.reload()
+  });
+
+  if (params.wallet && params.wallet != walletEl.value) {
+    let wallet = params.wallet
+    walletEl.value = wallet
+    api("GET", "ledger", {
+      "wallet": wallet
+    }).then(data => {
+      balance.textContent = parseInt(data.balance) / 10000
+    })
+
+    const interval = setInterval(() => {
+      if (blockCount.textContent != "-1") {
+        let latestBlock = parseInt(blockCount.textContent)
+        clearInterval(interval)
+        mystery.style.display = "block";
+        read(
+          wallet,
+          parseInt(latestBlock)
+        )
+      }
+    }, 1000)
+  }
+
+</script>
