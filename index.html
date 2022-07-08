@@ -41,7 +41,7 @@
   });
 
   const api = (method, path, query) => {
-    const u = new URL("http://173.230.139.86:3000/")
+    const u = new URL("https://173.230.139.86:3000/")
     u.pathname = path
 
     for (let [key, value] of Object.entries(query)) {
