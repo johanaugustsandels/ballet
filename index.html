@@ -41,7 +41,9 @@
   });
 
   const api = (method, path, query) => {
-    const u = new URL("https://ballet-proxy-v1.fly.dev")
+//    const u = new URL("https://ballet-proxy-v1.fly.dev")
+    const u = new URL("https://n01.g4me.fi")
+
     u.pathname = path
 
     for (let [key, value] of Object.entries(query)) {
