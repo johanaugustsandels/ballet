@@ -36,13 +36,24 @@
 <p><a href="https://github.com/johanaugustsandels/ballet">https://github.com/johanaugustsandels/ballet</a></p>
 
 <script>
+  async function sha256(data) {
+    // TODO maybe from bytearray not string?
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder("utf-8").encode(data));
+    return Array.prototype.map.call(new Uint8Array(buf), x=>(('00'+x.toString(16)).slice(-2))).join('');
+  }
+
+  const encoder = (data) => {
+    let utf8Encode = new TextEncoder();
+    return utf8Encode.encode(data)
+  }
+
   const params = new Proxy(new URLSearchParams(window.location.search), {
     get: (searchParams, prop) => searchParams.get(prop),
   });
 
   const api = (method, path, query) => {
 //    const u = new URL("https://ballet-proxy-v1.fly.dev")
-    const u = new URL("https://n01.g4me.fi")
+    const u = new URL("https://bamboo.ffmpool.com")
 
     u.pathname = path
 
