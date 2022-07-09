@@ -45,6 +45,9 @@
     const buf = await crypto.subtle.digest("SHA-256", data);
     return buf
   }
+  function shabytes2string(data) {
+    return Array.prototype.map.call(new Uint8Array(data), x => (('00' + x.toString(16)).slice(-2))).join('').toUpperCase();;
+  }
 
   const HexToArrayBuffer = (hex) => {
     return new Uint8Array(hex.match(/../g).map(h=>parseInt(h,16))).buffer
@@ -90,7 +93,9 @@
 
   const CalculateHash = (transaction, cb) => {
     CalculateContentHash(transaction).then(data => {
-      var parts = []
+      console.log("data", shabytes2string(data))
+      cb(shabytes2string(data))
+      {{/* var parts = []
       parts.push(data)
       if (transaction.from != "") {
         parts.push(HexToArrayBuffer(transaction.signature))
@@ -101,7 +106,7 @@
         console.log(transaction)
 
         cb(data2)
-      })
+      }) */}}
     })
   }
 
@@ -111,10 +116,15 @@
     if (transaction.from != "") {
       parts.push(HexToArrayBuffer(transaction.from))
     }
-    parts.push(IntToArrayBuffer(transaction.fee))
-    parts.push(IntToArrayBuffer(transaction.amount))
 
-    // trolol
+    // trolol make ulongs with 0
+
+    parts.push(IntToArrayBuffer(transaction.fee))
+    parts.push(IntToArrayBuffer(0));
+
+    parts.push(IntToArrayBuffer(transaction.amount))
+    parts.push(IntToArrayBuffer(0));
+
     parts.push(IntToArrayBuffer(parseInt(transaction.timestamp)));
     parts.push(IntToArrayBuffer(0));
 
